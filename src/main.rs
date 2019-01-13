@@ -12,13 +12,13 @@ fn print_prompt() {
 
 fn main () {
 	let stdin = io::stdin();
-	// let code = "add(2, 3)".to_string();
-	// let code = "
-	// if (x+2 < 10) {
-	// 	let x = 10;
-	// } else {
-	// 	let cat = (x * 9 + 99 > true)
-	// }".to_string();
+	// let code = "let x = 10;".to_string();
+	// // let code = "
+	// // if (x+2 < 10) {
+	// // 	let x = 10;
+	// // } else {
+	// // 	let cat = (x * 9 + 99 > true)
+	// // }".to_string();
 	// let lexer: lexer::Lexer = lexer::Lexer::new(&code);
 	
 	// let mut parser = parser::Parser::new(lexer);
@@ -66,7 +66,6 @@ fn main () {
 	// let lexer: lexer::Lexer = lexer::Lexer::new(&var);
 	// for c in lexer {
 	// 	println!("{}",c);
-	// 	// break;
 	// }
 		
 }

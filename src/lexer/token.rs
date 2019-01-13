@@ -4,6 +4,7 @@ use std::fmt;
 
 #[derive(Copy, Clone, PartialEq, Hash, Eq)]
 pub enum TokenType {
+    Eof,
 	Illegal,
 
     // Identifiers + literals
@@ -115,8 +116,10 @@ impl Token {
         
         
         // Identifiers + literals
+        else if literal == "EOF" { token_type = TokenType::Eof; }
         else if is_int(&literal) { token_type = TokenType::Int; }
         else if is_identifier(&literal) { token_type = TokenType::Ident; }
+        
         
         return Token{token_type: token_type, literal: literal};
     }
@@ -196,6 +199,7 @@ impl fmt::Display for Token {
         // Identifiers + literals
         else if self.token_type == TokenType::Int       { return write!(fmt,"{}", self.literal); }
         else if self.token_type == TokenType::Ident     { return write!(fmt,"{}", self.literal); }
+        else if self.token_type == TokenType::Eof       { return write!(fmt, "Eof"); }
         else { return write!(fmt,"Illegal({})", self.literal); }
         // Ok(())
     }

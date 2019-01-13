@@ -23,7 +23,7 @@ trait Expression: Node {
 
 // Statements.
 struct LetStatement {
-	token: lexer::token::Token,
+	token: Token,
 	value: Box<Expression>,
 	identifier: IdentifierExpression
 }
@@ -32,7 +32,7 @@ impl Node for LetStatement {
     fn token_literal(&self) -> &String { return &self.token.literal } 
 
     fn to_string(&self) -> String {
-        return format!("[{} {} = {}]", self.token, self.identifier.to_string(), self.value.as_ref().to_string());
+        return format!("[{} {} = {}]", self.token, self.identifier.to_string(), self.value.to_string());
         
     }
 }
@@ -41,18 +41,14 @@ impl Statement for LetStatement { fn statement_node(&self) {} }
 
 struct ReturnStatement {
     token: Token,
-    value: Option<Box<Expression>>
+    value: Box<Expression>
 }
 
 impl Node for ReturnStatement { 
     fn token_literal(&self) -> &String { return &self.token.literal } 
 
     fn to_string(&self) -> String {
-        if self.value.is_none() {
-            return format!("Token: {}, Value: None", self.token);
-        } else {
-            return format!("[{} {}]", self.token, self.value.as_ref().unwrap().to_string());
-        }
+        return format!("[{} {}]", self.token, self.value.to_string());
     }    
 }
 
@@ -60,18 +56,14 @@ impl Statement for ReturnStatement { fn statement_node(&self) {} }
 
 struct ExpressionStatement {
     token: Token,
-    value: Option<Box<Expression>>
+    value: Box<Expression>
 }
 
 impl Node for ExpressionStatement { 
     fn token_literal(&self) -> &String { return &self.token.literal } 
 
     fn to_string(&self) -> String {
-        if self.value.is_none() {
-            return format!("Error Expression Statement.");
-        } else {
-            return format!("{}", self.value.as_ref().unwrap().to_string());
-        }
+            return format!("{}", self.value.to_string());
     }    
 }
 
@@ -81,8 +73,6 @@ impl Statement for ExpressionStatement { fn statement_node(&self) {} }
 struct BlockStatement {
     token: Token, // {
     statements: Vec<Box<Statement>>
-    // consequency: Option<Box<BlockStatement>>
-    // alternative: Option<Box<BlockStatement>>
 }
 
 impl Statement for BlockStatement { fn statement_node(&self) {} } 
@@ -138,9 +128,9 @@ struct BoolExpression {
 
 struct IfElseExpression {
     token: Token,
-    consequence: Option<Box<Statement>>,
-    alternative: Option<Box<Statement>>,
-    condition: Option<Box<Expression>>
+    condition: Box<Expression>,
+    consequence: Box<Statement>,
+    alternative: Option<Box<Statement>>
 }
 
 impl Expression for IfElseExpression { fn expression_node(&self) {} } 
@@ -152,14 +142,14 @@ impl Node for IfElseExpression {
         if self.alternative.is_none() {
             return format!("{} {} do \n{}" , 
                 self.token,
-                self.condition.as_ref().unwrap().to_string(), 
-                self.consequence.as_ref().unwrap().to_string()
+                self.condition.to_string(), 
+                self.consequence.to_string()
             );
         }
         return format!("{} {} do \n{}else do \n{}",
             self.token,
-            self.condition.as_ref().unwrap().to_string(), 
-            self.consequence.as_ref().unwrap().to_string(),
+            self.condition.to_string(), 
+            self.consequence.to_string(),
             self.alternative.as_ref().unwrap().to_string()
         );
         
@@ -178,7 +168,7 @@ impl Node for BoolExpression {
 
 struct PrefixExpression {
     token: Token,
-    right: Option<Box<Expression>>
+    right: Box<Expression>
 
 }
 
@@ -188,14 +178,14 @@ impl Node for PrefixExpression {
     fn token_literal(&self) -> &String { return &self.token.literal }
 
     fn to_string(&self) -> String {
-        return format!("[{} {}]", self.token, self.right.as_ref().unwrap().to_string());
+        return format!("[{} {}]", self.token, self.right.to_string());
     }  
 }
 
 struct InfixExpression {
     token: Token,
-    left: Option<Box<Expression>>,
-    right: Option<Box<Expression>>
+    left: Box<Expression>,
+    right: Box<Expression>
 }
 
 impl Expression for InfixExpression { fn expression_node(&self) {} }
@@ -204,9 +194,9 @@ impl Node for InfixExpression {
     fn token_literal(&self) -> &String { return &self.token.literal }
 
     fn to_string(&self) -> String {
-        return format!("[{} {} {}]", self.left.as_ref().unwrap().to_string(), 
+        return format!("[{} {} {}]", self.left.to_string(), 
                                    self.token, 
-                                   self.right.as_ref().unwrap().to_string());
+                                   self.right.to_string());
     }  
 }
 
@@ -214,7 +204,7 @@ impl Node for InfixExpression {
 struct FunctionExpression {
     token: Token,
     parameters: Vec<Box<Expression>>,
-    body: Option<Box<Statement>>
+    body: Box<Statement>
 }
 
 impl Expression for FunctionExpression { fn expression_node(&self) {} }
@@ -233,7 +223,7 @@ impl Node for FunctionExpression {
 
         }
         to_return.push_str(&")\n".to_string());
-        to_return.push_str(&self.body.as_ref().unwrap().to_string());
+        to_return.push_str(&self.body.to_string());
         return to_return;
        
     }  
@@ -268,8 +258,8 @@ impl Node for CallExpression {
 
 pub struct Parser {
     pub lexer: lexer::Lexer,
-    pub token: Option<lexer::token::Token>,
-    pub next_token: Option<lexer::token::Token>,
+    pub token: Token,
+    pub next_token: Token,
     errors: Vec<String>
 }
 
@@ -278,10 +268,13 @@ impl Parser {
     pub fn new(mut lexer: lexer::Lexer) -> Self {
         let token = lexer.next_token();
         let next_token = lexer.next_token();
+        if token.is_none() || next_token.is_none() {
+            println!("Error, parser given empty lexer.")
+        }
 		Parser{
               lexer: lexer, 
-			  token: token,
-			  next_token: next_token,
+			  token: token.unwrap(),
+			  next_token: next_token.unwrap(),
               errors: Vec::new()
         }
         
@@ -290,16 +283,14 @@ impl Parser {
 
     // Helper functions.
 
-    fn token_type(&self) -> Option<TokenType> {
-        if self.token.is_none() {
-            return None;
-        }
-        return Some(self.token.as_ref().unwrap().token_type.clone());
+    fn token_type(&self) -> TokenType {
+        
+        return self.token.token_type.clone();
     }
 
     pub fn advance_tokens(&mut self) {
         self.token = self.next_token.clone();
-        self.next_token = self.lexer.next_token();
+        self.next_token = self.lexer.next_token().unwrap();
     }
 
     fn advance_tokens_if_next_token_is(&mut self, expected_type: TokenType) -> bool {
@@ -314,28 +305,19 @@ impl Parser {
     }
 
     fn token_is(&mut self, token_type: TokenType) -> bool {
-        return self.token.as_ref().unwrap().token_type == token_type
+        return self.token.token_type == token_type
     }
 
     fn next_token_is(&mut self, token_type: TokenType) -> bool {
-        if self.next_token.is_none() {
-            return false;
-        }
-        return self.next_token.as_ref().unwrap().token_type == token_type
+        return self.next_token.token_type == token_type
     }
 
-    fn next_token_precedence(&mut self) -> Option<Precedence> {
-        if self.next_token.is_none() {
-            return None;
-        }
-        return Some(self.next_token.as_ref().unwrap().get_precedence());
+    fn next_token_precedence(&mut self) -> Precedence {
+        return self.next_token.get_precedence();
     } 
 
-    fn token_precedence(&mut self) -> Option<Precedence> {
-        if self.token.is_none() {
-            return None;
-        }
-        return Some(self.token.as_ref().unwrap().get_precedence());
+    fn token_precedence(&mut self) -> Precedence {
+        return self.token.get_precedence();
     } 
 
     fn next_token_error(&mut self, expected_token_type: TokenType) {
@@ -345,8 +327,12 @@ impl Parser {
             literal: "".to_string()
         };
         self.errors.push(format!("Expected next token to be {} but got {} instead", 
-        expected_token, self.token.as_ref().unwrap().clone()));
+        expected_token, self.token.clone()));
 
+    }
+
+    fn add_parse_error(&mut self, error_message: String) {
+        self.errors.push(error_message);
     }
 
     pub fn print_parse_errors(&mut self) {
@@ -363,19 +349,24 @@ impl Parser {
     // Parse statements.
 
     fn parse_return_statement(&mut self) -> Option<Box<Statement>> {
-        let token = self.token.as_ref().unwrap().clone();
+        let token = self.token.clone();
         self.advance_tokens();
 
         // Todo make value expression.
         
         let value = self.parse_expression(Precedence::Lowest);
         
+        if value.is_none() {
+            self.add_parse_error("Return statement missing a value expression.".to_string());
+            return None;
+        }
+        
         if self.next_token_is(TokenType::SemiColon) {
             self.advance_tokens();
 
         }
          
-        let to_return = ReturnStatement{token: token, value: value};
+        let to_return = ReturnStatement{token: token, value: value.unwrap()};
 
         return Some(Box::new(to_return));
         
@@ -384,14 +375,14 @@ impl Parser {
     fn parse_let_statement(&mut self) -> Option<Box<Statement>> {
         let to_return: LetStatement;
         
-        let token = self.token.as_ref().unwrap().clone();
+        let token = self.token.clone();
 
         if !self.advance_tokens_if_next_token_is(TokenType::Ident) {
             return None;
         } 
         
         let identifier = IdentifierExpression{
-            token: self.token.as_ref().unwrap().clone(), 
+            token: self.token.clone(), 
         };
 
         if !self.advance_tokens_if_next_token_is(TokenType::Assign) {
@@ -400,27 +391,33 @@ impl Parser {
 
         self.advance_tokens();
         let value = self.parse_expression(Precedence::Lowest);
-        if self.next_token_is(TokenType::SemiColon) {
-            self.advance_tokens();
+        if value.is_some() {
+            
+            if self.next_token_is(TokenType::SemiColon) {
+                self.advance_tokens();
+            }
+            
+            
+            let to_return = LetStatement {
+                token: token,
+                value: value.unwrap(),
+                identifier: identifier
+            };
+            return Some(Box::new(to_return));
+        } else {
+            self.add_parse_error("Let statement is missing a value expression".to_string());
+            return None;
         }
-        
-        
-        let to_return = LetStatement {
-            token: token,
-            value: value,
-            identifier: identifier
-        };
-        return Some(Box::new(to_return));
     }
 
     fn parse_block_statement(&mut self) -> Option<Box<Statement>> {
         let mut to_return = BlockStatement {
-            token: self.token.as_ref().unwrap().clone(),
+            token: self.token.clone(),
             statements: Vec::new(),
         };
         self.advance_tokens();
 
-        while !self.token_is(TokenType::RBrace) && !self.token.is_none() {
+        while !self.token_is(TokenType::RBrace) && !self.token_is(TokenType::Eof) {
             let statement = self.parse_statement();
             if !statement.is_none() {
                 to_return.statements.push(statement.unwrap());
@@ -432,15 +429,19 @@ impl Parser {
 
     fn parse_expression_statement(&mut self) -> Option<Box<Statement>> {
         
-        let token = self.token.as_ref().unwrap().clone();
+        let token = self.token.clone();
         let value = self.parse_expression(Precedence::Lowest);
+        if value.is_none() {
+            self.add_parse_error("Expression statement is missing a value expression.".to_string());
+            return None;
+        }
         
         if self.next_token_is(TokenType::SemiColon) {
             self.advance_tokens();
         }
         let to_return = ExpressionStatement {
             token: token,
-            value: value
+            value: value.unwrap()
         };
 
         return Some(Box::new(to_return));
@@ -448,7 +449,7 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> Option<Box<Statement>> {
-        match self.token_type().unwrap() {
+        match self.token_type() {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
             _ => self.parse_expression_statement()
@@ -460,14 +461,14 @@ impl Parser {
     // Parse expressions.
 
     fn parse_identifier_expression(&mut self) -> Option<Box<Expression>> {
-        return Some(Box::new(IdentifierExpression {token: self.token.as_ref().unwrap().clone()}));
+        return Some(Box::new(IdentifierExpression {token: self.token.clone()}));
     }
 
     fn parse_integral_expression(&mut self) -> Option<Box<Expression>> {
-        let token = self.token.as_ref().unwrap().clone();
+        let token = self.token.clone();
         let value_result = token.literal.parse::<i64>();
         if value_result.is_err() {
-            println!("Error in parse integral.");
+            self.add_parse_error("Integral value not of type int.".to_string());
             return None;
         }
         let to_return = IntegralExpression {
@@ -479,31 +480,39 @@ impl Parser {
 
     fn parse_bool_expression(&mut self) -> Option<Box<Expression>> {
         let to_return = BoolExpression {
-            token: self.token.as_ref().unwrap().clone(),
+            token: self.token.clone(),
             value: self.token_is(TokenType::True),
         };
         return Some(Box::new(to_return));
     }
 
      fn parse_prefix_expression(&mut self) -> Option<Box<Expression>> {
-        let token = self.token.as_ref().unwrap().clone();
+        let token = self.token.clone();
         self.advance_tokens();
         let right = self.parse_expression(Precedence::Prefix);
+        if right.is_none() {
+            self.add_parse_error("Prefix expression missing right operand".to_string());
+            return None;
+        }
         let to_return = PrefixExpression {
             token: token,
-            right: right
+            right: right.unwrap()
         };
         return Some(Box::new(to_return));
     }
 
-    fn parse_infix_expression(&mut self, left: Option<Box<Expression>>) -> Option<Box<Expression>> {
-        let token = self.token.as_ref().unwrap().clone();
-        let precedence = self.token_precedence().unwrap();
+    fn parse_infix_expression(&mut self, left: Box<Expression>) -> Option<Box<Expression>> {
+        let token = self.token.clone();
+        let precedence = self.token_precedence();
         self.advance_tokens();
         let right = self.parse_expression(precedence);
+        if right.is_none() {
+            self.add_parse_error("Prefix expression missing right operand".to_string());
+            return None;
+        }
         let to_return = InfixExpression {
             token: token,
-            right: right,
+            right: right.unwrap(),
             left: left
         };
         return Some(Box::new(to_return));
@@ -514,7 +523,6 @@ impl Parser {
         self.advance_tokens();
         let to_return = self.parse_expression(Precedence::Lowest);
         if !self.advance_tokens_if_next_token_is(TokenType::RParen) {
-            println!{"Error, no matching right bracket."};
             return None;
         }
         return to_return;
@@ -522,13 +530,17 @@ impl Parser {
     }
 
     fn parse_ifelse_expression(&mut self) -> Option<Box<Expression>> {
-        let token = self.token.as_ref().unwrap().clone();
+        let token = self.token.clone();
         if !self.advance_tokens_if_next_token_is(TokenType::LParen) {
             return None;
         }
         self.advance_tokens();
         
         let condition = self.parse_expression(Precedence::Lowest);
+        if condition.is_none() {
+            self.add_parse_error("If expression invalid condition.".to_string());
+            return None;
+        }
         
         if !self.advance_tokens_if_next_token_is(TokenType::RParen) {
             return None;
@@ -538,6 +550,10 @@ impl Parser {
         }
         
         let consequence = self.parse_block_statement();
+        if consequence.is_none() {
+            self.add_parse_error("If expression missing a consequence.".to_string());
+            return None;
+        }
         
         let mut alternative: Option<Box<Statement>> = None;
         
@@ -552,17 +568,16 @@ impl Parser {
        
         let to_return = IfElseExpression{
             token: token,
-            condition: condition,
-            consequence: consequence,
+            condition: condition.unwrap(),
+            consequence: consequence.unwrap(),
             alternative: alternative
         };
         return Some(Box::new(to_return));
     }
 
     fn parse_func_expression(&mut self) -> Option<Box<Expression>> {
-        let token = self.token.as_ref().unwrap().clone();
+        let token = self.token.clone();
         if !self.advance_tokens_if_next_token_is(TokenType::LParen) {
-            // println!("here2");
             return None;
         }
         
@@ -571,46 +586,38 @@ impl Parser {
         self.advance_tokens();
         let mut parameters: Vec<Box<Expression>> = Vec::new();
         while !self.token_is(TokenType::RParen) {
-        // while true {
-            // println!("{}", self.token.as_ref().unwrap());
             parameters.push(self.parse_identifier_expression().unwrap());
             if self.next_token_is(TokenType::RParen) {
                 self.advance_tokens();
                 break;
             }            
             if !self.advance_tokens_if_next_token_is(TokenType::Comma) {
-                // println!("{}", self.token.as_ref().unwrap());
-                // println!("here2");
                 return None;
             }     
             self.advance_tokens();      
         }
         if !self.advance_tokens_if_next_token_is(TokenType::LBrace) {
-            // println!("here23");
             return None;
         }
         let body = self.parse_block_statement();
+        if body.is_none() {
+            self.add_parse_error("Function missing a block statement".to_string());
+            return None;
+        }
 
         let to_return = FunctionExpression {
             token: token,
-            body: body,
+            body: body.unwrap(),
             parameters: parameters
         };
-        // println!("{}", to_return.body.as_ref().unwrap().to_string());
         return Some(Box::new(to_return));
     }
 
-
-// struct CallExpression {
-//     token: Token,
-//     arguments: Vec<Box<Expression>>,
-//     func: Box<Expression>
-// }
-    fn parse_call_expression (&mut self, func: Option<Box<Expression>>) -> Option<Box<Expression>> {
+    fn parse_call_expression (&mut self, func: Box<Expression>) -> Option<Box<Expression>> {
         let mut to_return = CallExpression {
-            token: self.token.as_ref().unwrap().clone(),
+            token: self.token.clone(),
             arguments: Vec::new(),
-            func: func.unwrap()
+            func: func
         };
         self.advance_tokens();
         
@@ -618,12 +625,25 @@ impl Parser {
             return Some(Box::new(to_return));
         }
 
-        to_return.arguments.push(self.parse_expression(Precedence::Lowest).unwrap());
-        // let mut args: Vec<Box<Expression>>;
+        let mut expression = self.parse_expression(Precedence::Lowest);
+        if expression.is_none() {
+            self.add_parse_error("Error in call argument".to_string());
+            return None;
+        }
+        to_return.arguments.push(expression.unwrap());
+
         while self.next_token_is(TokenType::Comma) {
             self.advance_tokens();
             self.advance_tokens();
-            to_return.arguments.push(self.parse_expression(Precedence::Lowest).unwrap());
+            expression = self.parse_expression(Precedence::Lowest);
+
+            // to_return.arguments.push(self.parse_expression(Precedence::Lowest).unwrap());
+            expression = self.parse_expression(Precedence::Lowest);
+            if expression.is_none() {
+                self.add_parse_error("Error in call argument".to_string());
+                return None;
+            }
+            to_return.arguments.push(expression.unwrap());
 
         }
         if !self.advance_tokens_if_next_token_is(TokenType::RParen) {
@@ -636,7 +656,7 @@ impl Parser {
 
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Box<Expression>> {
-         let mut left_expression = match self.token_type().unwrap() {
+         let mut left_expression = match self.token_type() {
             TokenType::Ident => self.parse_identifier_expression(),
             TokenType::Int => self.parse_integral_expression(),
             TokenType::Bang => self.parse_prefix_expression(),
@@ -648,22 +668,24 @@ impl Parser {
             TokenType::Function => self.parse_func_expression(),
             _ => None 
         };
-        // println!("LEFT:{}", left_expression.as_ref().unwrap().to_string());
-                // println!("LEFT:{}", self.next_token.as_ref().unwrap());
+
+        if left_expression.is_none() {
+            return None;
+        }
         
 
         while !self.next_token_is(TokenType::SemiColon) && 
-              !self.next_token.is_none() &&
-              (precedence as u8) < (self.next_token_precedence().unwrap() as u8) {
+              !self.next_token_is(TokenType::Eof) &&
+              (precedence as u8) < (self.next_token_precedence() as u8) {
             
             if self.next_token_is(TokenType::LParen) {
                 self.advance_tokens();
-                left_expression = self.parse_call_expression(left_expression);
+                left_expression = self.parse_call_expression(left_expression.unwrap());
                 
 
-            } else if self.next_token.as_ref().unwrap().is_operator() { // Maybe next token isn't an operator
+            } else if self.next_token.is_operator() { // Maybe next token isn't an operator
                 self.advance_tokens();
-                left_expression = self.parse_infix_expression(left_expression);
+                left_expression = self.parse_infix_expression(left_expression.unwrap());
                 // return left_expression;
             } else {
                 return left_expression;
@@ -676,18 +698,13 @@ impl Parser {
 
     }
 
-
-
-   
-
     pub fn parse_program(&mut self) {
 
         let mut program = Program{statements: Vec::new()};
         let mut statement: Option<Box<Statement>>;
         
-        while !self.token.is_none() {
+        while !self.token_is(TokenType::Eof) {
             let statement = self.parse_statement();
-            // let x = catch {self.parse_statement()};
             if !statement.is_none() {
                 println!("{}", statement.as_ref().unwrap().to_string());
                 program.statements.push(statement.unwrap());
