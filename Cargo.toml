@@ -1,0 +1,8 @@
+[package]
+name = "rust-monkey"
+version = "0.1.0"
+authors = ["Jed <jeddaboyle@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+maplit = "1.0.1"
