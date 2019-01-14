@@ -7,7 +7,6 @@ pub struct Lexer {
 	position: usize, // current position in input (points to current char) 
 	read_position: usize, // current reading position in input (after current char) 
 	val: char, // current char under examination
-	length: usize,
     eof: bool
 }
 
@@ -21,7 +20,6 @@ impl Lexer {
 			  position: 0,
 			  read_position: 1,
 			  val: input_string.chars().nth(0).unwrap(),
-			  length: input_string.chars().count(),
               eof: false
               }
 	}
@@ -104,8 +102,6 @@ impl Lexer {
         else {
             return Some(token::Token::new("EOF".to_string()));
         }
-        return None;
-	    
 
     }
 

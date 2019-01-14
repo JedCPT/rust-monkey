@@ -1,6 +1,8 @@
 
 mod lexer;
 mod parser;
+mod object;
+mod evaluator;
 use std::io;
 use std::io::prelude::*;
 #[macro_use] extern crate maplit;
@@ -25,27 +27,27 @@ fn main () {
 	
 	// parser.parse_program();
 	
-	print_prompt();	
+	// print_prompt();	
 	
 	// Main REPL Loop.
-	let mut lexer: lexer::Lexer;
-	let mut parser: parser::Parser;
-    for line in stdin.lock().lines() {
+	// let mut lexer: lexer::Lexer;
+	// let mut parser: parser::Parser;
+    // for line in stdin.lock().lines() {
 		
-		if line.as_ref().unwrap() == "" { break; }
+	// 	if line.as_ref().unwrap() == "" { break; }
 		
-		lexer = lexer::Lexer::new(&line.as_ref().unwrap());
-		parser = parser::Parser::new(lexer);
-		parser.parse_program();
-		parser.print_parse_errors();
+	// 	lexer = lexer::Lexer::new(&line.as_ref().unwrap());
+	// 	parser = parser::Parser::new(lexer);
+	// 	parser.parse_program();
+	// 	parser.print_parse_errors();
 		
-		// for token in lexer {
-		// 	println!("{}",token);
-		// }
+	// 	// for token in lexer {
+	// 	// 	println!("{}",token);
+	// 	// }
 
-		print_prompt();
+	// 	print_prompt();
 
-    }
+    // }
 	// let var: String = "
 	// 	let five = 5;
 	// 	let ten = 10;

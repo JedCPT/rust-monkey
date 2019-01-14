@@ -8,7 +8,7 @@ struct Program {
 }
 
 // Define Node and Node types.
-trait Node {
+pub trait Node {
     fn token_literal(&self) -> &String;
     fn to_string(&self) -> String;
 }
@@ -373,7 +373,7 @@ impl Parser {
     }
 
     fn parse_let_statement(&mut self) -> Option<Box<Statement>> {
-        let to_return: LetStatement;
+        // let to_return: LetStatement;
         
         let token = self.token.clone();
 
@@ -635,7 +635,7 @@ impl Parser {
         while self.next_token_is(TokenType::Comma) {
             self.advance_tokens();
             self.advance_tokens();
-            expression = self.parse_expression(Precedence::Lowest);
+            // expression = self.parse_expression(Precedence::Lowest);
 
             // to_return.arguments.push(self.parse_expression(Precedence::Lowest).unwrap());
             expression = self.parse_expression(Precedence::Lowest);
@@ -704,7 +704,7 @@ impl Parser {
         let mut statement: Option<Box<Statement>>;
         
         while !self.token_is(TokenType::Eof) {
-            let statement = self.parse_statement();
+            statement = self.parse_statement();
             if !statement.is_none() {
                 println!("{}", statement.as_ref().unwrap().to_string());
                 program.statements.push(statement.unwrap());
