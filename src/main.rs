@@ -3,9 +3,44 @@ mod lexer;
 mod parser;
 mod object;
 mod evaluator;
+mod ast;
+mod enviroment;
 use std::io;
 use std::io::prelude::*;
-#[macro_use] extern crate maplit;
+// use parser::Program;
+#[macro_use] 
+extern crate maplit;
+// #[macro_use]
+// extern crate downcast;
+#[macro_use]
+extern crate downcast_rs;
+// use downcast_rs::Downcast;
+
+// fn eval(node: Box<ast::Node>) -> Option<Box<object::Object>> {
+// 	// match node.get_type() {
+// 		ast::NodeType::IntegralExpression => ,
+// 		_ => None
+// 	// }
+
+// }
+
+
+use std::collections::HashMap;
+
+fn eval(program: &mut parser::Program, env: &mut enviroment::Enviroment) {
+	let mut result: Box<object::Object>;
+	
+	for statement in program.statements.iter().by_ref() {
+		println!("{}", statement.to_string());
+		
+		result = statement.eval(env);
+		
+		println!("{}", result.to_string());
+		
+
+	}
+	
+}
 
 
 fn print_prompt() {
@@ -27,27 +62,29 @@ fn main () {
 	
 	// parser.parse_program();
 	
-	// print_prompt();	
+	print_prompt();	
 	
 	// Main REPL Loop.
-	// let mut lexer: lexer::Lexer;
-	// let mut parser: parser::Parser;
-    // for line in stdin.lock().lines() {
+	let mut lexer: lexer::Lexer;
+	let mut parser: parser::Parser;
+	let mut env = enviroment::Enviroment::new(None);
+    for line in stdin.lock().lines() {
 		
-	// 	if line.as_ref().unwrap() == "" { break; }
+		if line.as_ref().unwrap() == "" { break; }
 		
-	// 	lexer = lexer::Lexer::new(&line.as_ref().unwrap());
-	// 	parser = parser::Parser::new(lexer);
-	// 	parser.parse_program();
-	// 	parser.print_parse_errors();
+		lexer = lexer::Lexer::new(&line.as_ref().unwrap());
+		parser = parser::Parser::new(lexer);
+		let program = parser.parse_program();
+		parser.print_parse_errors();
+		eval(&mut program.unwrap(), &mut env);
 		
-	// 	// for token in lexer {
-	// 	// 	println!("{}",token);
-	// 	// }
+		// for token in lexer {
+		// 	println!("{}",token);
+		// }
 
-	// 	print_prompt();
+		print_prompt();
 
-    // }
+    }
 	// let var: String = "
 	// 	let five = 5;
 	// 	let ten = 10;

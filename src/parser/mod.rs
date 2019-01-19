@@ -1,263 +1,42 @@
-use super::lexer;
+/*****************************************************************************
+ Jedda Boyle
+ 
+ CONTAINS:
+ 
+ NOTES:
+ *****************************************************************************/
 
-// use super::lexer::token::TokenType;
-use super::lexer::token::*;
+use super::lexer::Lexer;
 
-struct Program {
-    statements: Vec<Box<Statement>>
-}
+use super::lexer::token::TokenType;
+use super::lexer::token::Token;
+use super::lexer::token::Precedence;
 
-// Define Node and Node types.
-pub trait Node {
-    fn token_literal(&self) -> &String;
-    fn to_string(&self) -> String;
-}
+use super::ast::Expression;
+use super::ast::Statement;
+use super::ast::LetStatement;
+use super::ast::ReturnStatement;
+use super::ast::BlockStatement;
+use super::ast::ExpressionStatement;
 
-trait Statement: Node {
-    fn statement_node(&self);
-}
+use super::ast::IdentifierExpression;
+use super::ast::FunctionExpression;
+use super::ast::CallExpression;
+use super::ast::IfElseExpression;
+use super::ast::BoolExpression;
+use super::ast::InfixExpression;
+use super::ast::PrefixExpression;
+use super::ast::IntegralExpression;
 
-trait Expression: Node {
-    fn expression_node(&self);
-}
-
-// Statements.
-struct LetStatement {
-	token: Token,
-	value: Box<Expression>,
-	identifier: IdentifierExpression
-}
-
-impl Node for LetStatement { 
-    fn token_literal(&self) -> &String { return &self.token.literal } 
-
-    fn to_string(&self) -> String {
-        return format!("[{} {} = {}]", self.token, self.identifier.to_string(), self.value.to_string());
-        
-    }
-}
-
-impl Statement for LetStatement { fn statement_node(&self) {} }
-
-struct ReturnStatement {
-    token: Token,
-    value: Box<Expression>
-}
-
-impl Node for ReturnStatement { 
-    fn token_literal(&self) -> &String { return &self.token.literal } 
-
-    fn to_string(&self) -> String {
-        return format!("[{} {}]", self.token, self.value.to_string());
-    }    
-}
-
-impl Statement for ReturnStatement { fn statement_node(&self) {} }
-
-struct ExpressionStatement {
-    token: Token,
-    value: Box<Expression>
-}
-
-impl Node for ExpressionStatement { 
-    fn token_literal(&self) -> &String { return &self.token.literal } 
-
-    fn to_string(&self) -> String {
-            return format!("{}", self.value.to_string());
-    }    
-}
-
-impl Statement for ExpressionStatement { fn statement_node(&self) {} }
+/*****************************************************************************/
 
 
-struct BlockStatement {
-    token: Token, // {
-    statements: Vec<Box<Statement>>
-}
-
-impl Statement for BlockStatement { fn statement_node(&self) {} } 
-
-impl Node for BlockStatement { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        let mut to_return = "".to_string();
-        for statement in self.statements.iter().by_ref() {
-            to_return.push_str(&statement.to_string());
-            to_return.push('\n');
-        }
-        return to_return;
-    }  
-}
-
-// Expressions.
-struct IdentifierExpression {
-    token: Token,
-    // value: String
-}
-
-impl Node for IdentifierExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        return format!("{}", self.token);
-    }  
-}
-
-impl Expression for IdentifierExpression { fn expression_node(&self) {} } 
-
-struct IntegralExpression {
-    token: Token,
-    value: i64
-}
-
-impl Expression for IntegralExpression { fn expression_node(&self) {} } 
-
-impl Node for IntegralExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        return format!("{}", self.token);
-    }  
-}
-
-struct BoolExpression {
-    token: Token,
-    value: bool
-}
-
-struct IfElseExpression {
-    token: Token,
-    condition: Box<Expression>,
-    consequence: Box<Statement>,
-    alternative: Option<Box<Statement>>
-}
-
-impl Expression for IfElseExpression { fn expression_node(&self) {} } 
-
-impl Node for IfElseExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        if self.alternative.is_none() {
-            return format!("{} {} do \n{}" , 
-                self.token,
-                self.condition.to_string(), 
-                self.consequence.to_string()
-            );
-        }
-        return format!("{} {} do \n{}else do \n{}",
-            self.token,
-            self.condition.to_string(), 
-            self.consequence.to_string(),
-            self.alternative.as_ref().unwrap().to_string()
-        );
-        
-    }  
-}
-
-impl Expression for BoolExpression { fn expression_node(&self) {} } 
-
-impl Node for BoolExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        return format!("{}", self.token);
-    }  
-}
-
-struct PrefixExpression {
-    token: Token,
-    right: Box<Expression>
-
-}
-
-impl Expression for PrefixExpression { fn expression_node(&self) {} } 
-
-impl Node for PrefixExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        return format!("[{} {}]", self.token, self.right.to_string());
-    }  
-}
-
-struct InfixExpression {
-    token: Token,
-    left: Box<Expression>,
-    right: Box<Expression>
-}
-
-impl Expression for InfixExpression { fn expression_node(&self) {} }
-
-impl Node for InfixExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        return format!("[{} {} {}]", self.left.to_string(), 
-                                   self.token, 
-                                   self.right.to_string());
-    }  
-}
-
-
-struct FunctionExpression {
-    token: Token,
-    parameters: Vec<Box<Expression>>,
-    body: Box<Statement>
-}
-
-impl Expression for FunctionExpression { fn expression_node(&self) {} }
-
-impl Node for FunctionExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        let mut to_return = format!("{} (", self.token);
-        for par in self.parameters.iter().by_ref() {
-            to_return.push_str(&par.to_string());
-            to_return.push(',')
-        }
-        if self.parameters.len() != 0 {
-            to_return.pop(); // Remove trailing comma
-
-        }
-        to_return.push_str(&")\n".to_string());
-        to_return.push_str(&self.body.to_string());
-        return to_return;
-       
-    }  
-}
-
-struct CallExpression {
-    token: Token,
-    arguments: Vec<Box<Expression>>,
-    func: Box<Expression>
-}
-
-
-impl Expression for CallExpression { fn expression_node(&self) {} }
-
-impl Node for CallExpression { 
-    fn token_literal(&self) -> &String { return &self.token.literal }
-
-    fn to_string(&self) -> String {
-        let mut to_return = format!("[{} (", self.func.to_string());
-        for arg in self.arguments.iter().by_ref() {
-            to_return.push_str(&arg.to_string());
-            to_return.push(',')
-        }
-        if self.arguments.len() != 0 {
-            to_return.pop(); // Remove trailing comma
-        }
-        to_return.push_str(&")]".to_string());
-        return to_return;
-       
-    }  
+pub struct Program {
+    pub statements: Vec<Box<Statement>>
 }
 
 pub struct Parser {
-    pub lexer: lexer::Lexer,
+    pub lexer: Lexer,
     pub token: Token,
     pub next_token: Token,
     errors: Vec<String>
@@ -265,7 +44,7 @@ pub struct Parser {
 
 impl Parser {
     
-    pub fn new(mut lexer: lexer::Lexer) -> Self {
+    pub fn new(mut lexer: Lexer) -> Self {
         let token = lexer.next_token();
         let next_token = lexer.next_token();
         if token.is_none() || next_token.is_none() {
@@ -305,11 +84,11 @@ impl Parser {
     }
 
     fn token_is(&mut self, token_type: TokenType) -> bool {
-        return self.token.token_type == token_type
+        return self.token.token_type == token_type;
     }
 
     fn next_token_is(&mut self, token_type: TokenType) -> bool {
-        return self.next_token.token_type == token_type
+        return self.next_token.token_type == token_type;
     }
 
     fn next_token_precedence(&mut self) -> Precedence {
@@ -321,7 +100,6 @@ impl Parser {
     } 
 
     fn next_token_error(&mut self, expected_token_type: TokenType) {
-        // TODO. Keep track of all errors.
         let expected_token = Token {
             token_type: expected_token_type,
             literal: "".to_string()
@@ -352,8 +130,6 @@ impl Parser {
         let token = self.token.clone();
         self.advance_tokens();
 
-        // Todo make value expression.
-        
         let value = self.parse_expression(Precedence::Lowest);
         
         if value.is_none() {
@@ -374,6 +150,7 @@ impl Parser {
 
     fn parse_let_statement(&mut self) -> Option<Box<Statement>> {
         // let to_return: LetStatement;
+        
         
         let token = self.token.clone();
 
@@ -698,7 +475,7 @@ impl Parser {
 
     }
 
-    pub fn parse_program(&mut self) {
+    pub fn parse_program(&mut self) -> Option<Program> {
 
         let mut program = Program{statements: Vec::new()};
         let mut statement: Option<Box<Statement>>;
@@ -706,7 +483,7 @@ impl Parser {
         while !self.token_is(TokenType::Eof) {
             statement = self.parse_statement();
             if !statement.is_none() {
-                println!("{}", statement.as_ref().unwrap().to_string());
+                // println!("{}", statement.as_ref().unwrap().to_string());
                 program.statements.push(statement.unwrap());
             } 
 
@@ -714,6 +491,7 @@ impl Parser {
             
 
         }
+        return Some(program);
         
 
     }

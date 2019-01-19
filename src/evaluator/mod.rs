@@ -1,6 +1,10 @@
-use super::parser::Node;
-use super::object;
+// use super::parser::*;
+// use super::object::*;
 
-fn Eval(node: Box<parser::Node>) -> i32 {
-    return 1;
-}
+// fn Eval(node: Box<Node>) -> Option<Object> {
+//     match node() {
+//         LetStatement
+//         _ => return None;
+//     }
+//     return None;
+// }
