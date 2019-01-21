@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 pub struct Enviroment {
 
-    pub variables: HashMap<String, Box<Object>>,
+    pub variables: HashMap<String, Rc<Object>>,
     pub outer: Option<Rc<RefCell<Enviroment>>>
 
 }
@@ -20,18 +20,17 @@ impl Enviroment {
         return to_return;
     }
 
-    pub fn insert(&mut self, key: String, value: Box<Object>) {
+    pub fn insert(&mut self, key: String, value: Rc<Object>) {
         self.variables.insert(key, value);
     }
 
-    pub fn get(&self, key: &String) -> Option<&Box<Object>> {
+    pub fn get(&self, key: &String) -> Option<Rc<Object>> {
         let to_return = self.variables.get(key);
         if to_return.is_some() {
-            return to_return;
+            return Some(to_return.unwrap().clone());
         }
         if self.outer.is_some() {
-            let x = self.outer.as_ref().unwrap().clone();
-            return x.borrow().get(key);
+            return self.outer.as_ref().unwrap().borrow().get(key).map(|x| x.clone())
         }
         return None;
         

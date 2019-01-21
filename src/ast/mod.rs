@@ -61,7 +61,7 @@ pub trait Node {
 
     fn to_string(&self) -> String;
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object>;
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object>;
 }
 
 pub trait Statement: Node {
@@ -113,13 +113,13 @@ impl Node for LetStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::LetStatement; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         let value = self.value.eval(env.clone());
         if value.get_type() == ObjectType::Error {
             return value;
         }
         env.borrow_mut().insert(self.identifier.token.literal.clone(), value);
-        return Box::new(object::Null{});
+        return Rc::new(object::Null{});
     }
     
     fn to_string(&self) -> String {
@@ -132,7 +132,7 @@ impl Node for ReturnStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::ReturnStatement; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         return self.value.eval(env);
     }
 
@@ -147,7 +147,7 @@ impl Node for ExpressionStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::ExpressionStatement; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         return self.value.eval(env);
     }
 
@@ -162,8 +162,8 @@ impl Node for BlockStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::BlockStatement; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
-        let mut result: Box<Object> = Box::new(object::Null{});
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
+        let mut result: Rc<Object> = Rc::new(object::Null{});
         for statement in self.statements.iter().by_ref() {
             result = statement.eval(env.clone());
             if statement.get_type() == NodeType::ReturnStatement {
@@ -257,33 +257,33 @@ impl Node for IdentifierExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::IdentifierExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         let borrowed_env = env.borrow();
         // let value = env.borrow().get(&self.token.literal);
         let value = borrowed_env.get(&self.token.literal);
         
         if value.is_none() {
-            return Box::new(object::Error{message: format!("Variable {} not in scope.", self.token.literal).to_string()});
+            return Rc::new(object::Error{message: format!("Variable {} not in scope.", self.token.literal).to_string()});
         }
-        if value.unwrap().get_type() == ObjectType::Integer {
-            let int_value = value.unwrap().downcast_ref::<object::Integer>().unwrap();
-            return Box::new(object::Integer{value: int_value.value})
+        if value.as_ref().unwrap().get_type() == ObjectType::Integer {
+            let int_value = value.as_ref().unwrap().downcast_ref::<object::Integer>().unwrap();
+            return Rc::new(object::Integer{value: int_value.value})
         } 
-        if value.unwrap().get_type() == ObjectType::Boolean {
-            let bool_value = value.unwrap().downcast_ref::<object::Boolean>().unwrap();
-            return Box::new(object::Boolean{value: bool_value.value});
+        if value.as_ref().unwrap().get_type() == ObjectType::Boolean {
+            let bool_value = value.as_ref().unwrap().downcast_ref::<object::Boolean>().unwrap();
+            return Rc::new(object::Boolean{value: bool_value.value});
 
         }
-        if value.unwrap().get_type() == ObjectType::Function {
-            let func_value = value.unwrap().downcast_ref::<object::Function>().unwrap();
-            return Box::new(
+        if value.as_ref().unwrap().get_type() == ObjectType::Function {
+            let func_value = value.as_ref().unwrap().downcast_ref::<object::Function>().unwrap();
+            return Rc::new(
                 object::Function{env: func_value.env.clone(), 
                                  body: func_value.body.clone(), 
                                  parameters: func_value.parameters.clone()
                 }
             );
         }
-        return Box::new(object::Error{message: format!("Variable {} in scope but not returned.", self.token.literal).to_string()});
+        return Rc::new(object::Error{message: format!("Variable {} in scope but not returned.", self.token.literal).to_string()});
 
 
     }
@@ -298,8 +298,8 @@ impl Node for IntegralExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::IntegralExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
-        return Box::new(object::Integer{value: self.value});
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
+        return Rc::new(object::Integer{value: self.value});
     }
 
     fn to_string(&self) -> String {
@@ -312,8 +312,8 @@ impl Node for BoolExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::BoolExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
-        return Box::new(object::Boolean{value: self.value});
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
+        return Rc::new(object::Boolean{value: self.value});
     }
 
     fn to_string(&self) -> String {
@@ -324,23 +324,23 @@ impl Node for BoolExpression {
 
 impl PrefixExpression {
    
-    fn eval_minus_operator(&self, right: &Box<Object>) -> Box<Object> {
+    fn eval_minus_operator(&self, right: &Rc<Object>) -> Rc<Object> {
         let operand = right.downcast_ref::<object::Integer>();
         if operand.is_some() {
             let to_return = object::Integer{value: -operand.unwrap().value};
-            return Box::new(to_return);
+            return Rc::new(to_return);
         }
-        return Box::new(object::Error{message: "Error: Prefix operand is not an integer as expected".to_string()});
+        return Rc::new(object::Error{message: "Error: Prefix operand is not an integer as expected".to_string()});
         
     }
 
-    fn eval_bang_operator(&self, right: &Box<Object>) -> Box<Object> {
+    fn eval_bang_operator(&self, right: &Rc<Object>) -> Rc<Object> {
         let operand = right.downcast_ref::<object::Boolean>();
         if operand.is_some() {
             let to_return = object::Boolean{value: !operand.unwrap().value};
-            return Box::new(to_return);
+            return Rc::new(to_return);
         }
-        return Box::new(object::Error{message: "Error: Prefix operand is not a boolean as expected".to_string()});
+        return Rc::new(object::Error{message: "Error: Prefix operand is not a boolean as expected".to_string()});
     }
 }
 
@@ -348,7 +348,7 @@ impl Node for PrefixExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::PrefixExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         let right = self.right.eval(env.clone());
         // println!("here");
         if right.get_type() == ObjectType::Error { return right; }
@@ -363,7 +363,7 @@ impl Node for PrefixExpression {
                 
             },
              _ => {
-                 return Box::new(object::Error{message: "Error: Prefix operator not - or !..".to_string()});
+                 return Rc::new(object::Error{message: "Error: Prefix operator not - or !..".to_string()});
              }
 
         }
@@ -378,7 +378,7 @@ impl Node for PrefixExpression {
 
 impl InfixExpression {
 
-    fn eval_boolean_infix_expression(&self, left: &Box<Object>, right: &Box<Object>) -> Box<Object> {
+    fn eval_boolean_infix_expression(&self, left: &Rc<Object>, right: &Rc<Object>) -> Rc<Object> {
         let l_value = left.downcast_ref::<object::Boolean>().unwrap().value;
         let r_value = right.downcast_ref::<object::Boolean>().unwrap().value;
         let value = match self.token.token_type { 
@@ -387,13 +387,13 @@ impl InfixExpression {
             _ => None
         };
         if value.is_some() {
-            return Box::new(object::Boolean{value: value.unwrap()});
+            return Rc::new(object::Boolean{value: value.unwrap()});
         }
-        return Box::new(object::Error{message: "Boolean infix being evaluated with invalid operand.".to_string()});
+        return Rc::new(object::Error{message: "Boolean infix being evaluated with invalid operand.".to_string()});
 
     }
 
-    fn eval_integer_infix_expression(&self, left: &Box<Object>, right: &Box<Object>) -> Box<Object> {
+    fn eval_integer_infix_expression(&self, left: &Rc<Object>, right: &Rc<Object>) -> Rc<Object> {
         let l_value = left.downcast_ref::<object::Integer>().unwrap().value;
         let r_value = right.downcast_ref::<object::Integer>().unwrap().value;
          
@@ -405,7 +405,7 @@ impl InfixExpression {
             _ => None
         };
         if int_value.is_some() {
-            return Box::new(object::Integer{value: int_value.unwrap()});
+            return Rc::new(object::Integer{value: int_value.unwrap()});
         } 
         let bool_value = match self.token.token_type {
             TokenType::Lt => Some(l_value < r_value),
@@ -415,9 +415,9 @@ impl InfixExpression {
             _ => None
         };
         if bool_value.is_some() {
-            return Box::new(object::Boolean{value: bool_value.unwrap()});
+            return Rc::new(object::Boolean{value: bool_value.unwrap()});
         }
-        return Box::new(object::Error{message: "Integer infix being evaluated with invalid operand.".to_string()})
+        return Rc::new(object::Error{message: "Integer infix being evaluated with invalid operand.".to_string()})
         
     }
 }
@@ -426,7 +426,7 @@ impl Node for InfixExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::InfixExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         
         let r_operand = self.right.eval(env.clone());
         let l_operand = self.left.eval(env.clone());
@@ -441,10 +441,10 @@ impl Node for InfixExpression {
                 return self.eval_boolean_infix_expression(&l_operand, &r_operand);
 
         } else {
-            return Box::new(object::Error{message: "Default".to_string()}); 
+            return Rc::new(object::Error{message: "Default".to_string()}); 
         }
         
-        return Box::new(object::Error{message: "Default".to_string()});
+        return Rc::new(object::Error{message: "Default".to_string()});
 
         
     }
@@ -461,13 +461,13 @@ impl Node for IfElseExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::IfElseExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         let condition = self.condition.eval(env.clone());
         if condition.get_type() != ObjectType::Boolean {
             if condition.get_type() == ObjectType::Error {
                 return condition;
             } else {
-                return Box::new(object::Error{message: "Condition is not of boolean type.".to_string()});
+                return Rc::new(object::Error{message: "Condition is not of boolean type.".to_string()});
             }
             // Error.
         }
@@ -479,7 +479,7 @@ impl Node for IfElseExpression {
             return self.alternative.as_ref().unwrap().eval(env.clone());
 
         } else {
-            return Box::new(object::Null{});
+            return Rc::new(object::Null{});
         }
 
     }
@@ -506,9 +506,7 @@ impl Node for FunctionExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::FunctionExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
-        println!("made it");
-        // let outer_env = std::rc::Rc::new(env);
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
         
         let to_return = object::Function {
             body: self.body.clone(),
@@ -516,7 +514,7 @@ impl Node for FunctionExpression {
             env: Rc::new(RefCell::new(Enviroment::new(Some(env.clone())))),
         };
 
-        return Box::new(to_return);
+        return Rc::new(to_return);
     }
 
     fn to_string(&self) -> String {
@@ -536,12 +534,62 @@ impl Node for FunctionExpression {
     }  
 }
 
+
+// pub struct CallExpression {
+//     pub token: Token,
+//     pub arguments: Vec<Box<Expression>>,
+//     pub func: Box<Expression>
+// }
+
+impl CallExpression {
+    fn eval_arguments(&self, env: Rc<RefCell<Enviroment>> ) -> Vec<Rc<Object>> {
+        let mut to_return: Vec<Rc<Object>> = Vec::new();
+        let mut result: Rc<Object>;
+        for arg in self.arguments.iter().by_ref() {
+            result = arg.eval(env.clone());
+            if result.get_type() == ObjectType::Error {
+                to_return.clear();
+                to_return.push(result);
+                return to_return;
+
+            }
+            println!("{}", result.to_string());
+            to_return.push(result);
+            
+        }
+
+        return to_return;
+
+    }
+
+    fn extend_enviroment(&self, args:Vec<Rc<Object>>) {
+
+
+    }
+}
+
 impl Node for CallExpression { 
 
     fn get_type(&self) -> NodeType { return NodeType::CallExpression; }
 
-    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
-        return Box::new(object::Error{message: "Default".to_string()});
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
+        let func = self.func.eval(env.clone());
+        if func.get_type() != ObjectType::Function {
+            return Rc::new(object::Error{message: "Invalid function.".to_string()});
+        }
+        // if self.func.get_type() == NodeType::IdentifierExpression {
+        //     // let ident = self.func.downcast_ref::<object::Integer>().unwrap().value;
+        //     let func = self.func.eval(env);
+        //     // func = env.borrow().get(&self.func.token.literal);
+        //     // println!("sfsdf");
+        // }
+        println!("{}", self.func.to_string());
+        // let func = env.get()
+        let arguments = self.eval_arguments(env);
+        if arguments.len() == 1 && arguments[0].get_type() == ObjectType::Error {
+            return Rc::new(object::Error{message: "Couldn't evaluate function arguments.".to_string()});
+        }
+        return Rc::new(object::Error{message: "Default".to_string()});
     }
 
     fn to_string(&self) -> String {

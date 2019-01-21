@@ -30,7 +30,7 @@ extern crate downcast_rs;
 use std::collections::HashMap;
 
 fn eval(program: &mut parser::Program, env: Rc<RefCell<enviroment::Enviroment>>) {
-	let mut result: Box<object::Object>;
+	let mut result: Rc<object::Object>;
 	
 	for statement in program.statements.iter().by_ref() {
 		println!("{}", statement.to_string());
