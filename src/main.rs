@@ -7,6 +7,8 @@ mod ast;
 mod enviroment;
 use std::io;
 use std::io::prelude::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 // use parser::Program;
 #[macro_use] 
 extern crate maplit;
@@ -27,13 +29,13 @@ extern crate downcast_rs;
 
 use std::collections::HashMap;
 
-fn eval(program: &mut parser::Program, env: &mut enviroment::Enviroment) {
+fn eval(program: &mut parser::Program, env: Rc<RefCell<enviroment::Enviroment>>) {
 	let mut result: Box<object::Object>;
 	
 	for statement in program.statements.iter().by_ref() {
 		println!("{}", statement.to_string());
 		
-		result = statement.eval(env);
+		result = statement.eval(env.clone());
 		
 		println!("{}", result.to_string());
 		
@@ -67,7 +69,8 @@ fn main () {
 	// Main REPL Loop.
 	let mut lexer: lexer::Lexer;
 	let mut parser: parser::Parser;
-	let mut env = enviroment::Enviroment::new(None);
+	let mut enviroment = enviroment::Enviroment::new(None);
+	let env = Rc::new(RefCell::new(enviroment));
     for line in stdin.lock().lines() {
 		
 		if line.as_ref().unwrap() == "" { break; }
@@ -76,7 +79,7 @@ fn main () {
 		parser = parser::Parser::new(lexer);
 		let program = parser.parse_program();
 		parser.print_parse_errors();
-		eval(&mut program.unwrap(), &mut env);
+		eval(&mut program.unwrap(), env.clone());
 		
 		// for token in lexer {
 		// 	println!("{}",token);

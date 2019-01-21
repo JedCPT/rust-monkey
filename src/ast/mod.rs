@@ -19,6 +19,8 @@ use super::enviroment::Enviroment;
 // use super::object::Boolean
 // #[macro_use]
 use downcast_rs::Downcast;
+use std::cell::RefCell;
+use std::rc::Rc;
 // extern crate downcast_rs;
 
 // #[macro_use]
@@ -59,7 +61,7 @@ pub trait Node {
 
     fn to_string(&self) -> String;
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object>;
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object>;
 }
 
 pub trait Statement: Node {
@@ -111,12 +113,12 @@ impl Node for LetStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::LetStatement; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
-        let value = self.value.eval(env);
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+        let value = self.value.eval(env.clone());
         if value.get_type() == ObjectType::Error {
             return value;
         }
-        env.insert(self.identifier.token.literal.clone(), value);
+        env.borrow_mut().insert(self.identifier.token.literal.clone(), value);
         return Box::new(object::Null{});
     }
     
@@ -130,7 +132,7 @@ impl Node for ReturnStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::ReturnStatement; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         return self.value.eval(env);
     }
 
@@ -145,7 +147,7 @@ impl Node for ExpressionStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::ExpressionStatement; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         return self.value.eval(env);
     }
 
@@ -160,10 +162,10 @@ impl Node for BlockStatement {
 
     fn get_type(&self) -> NodeType { return NodeType::BlockStatement; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         let mut result: Box<Object> = Box::new(object::Null{});
         for statement in self.statements.iter().by_ref() {
-            result = statement.eval(env);
+            result = statement.eval(env.clone());
             if statement.get_type() == NodeType::ReturnStatement {
                 return result;
             }
@@ -221,8 +223,8 @@ pub struct IfElseExpression {
 
 pub struct FunctionExpression {
     pub token: Token,
-    pub parameters: Vec<Box<Expression>>,
-    pub body: Box<Statement>
+    pub parameters: Rc<Vec<Box<Expression>>>,
+    pub body: Rc<Box<Statement>>
 }
 
 pub struct CallExpression {
@@ -255,22 +257,34 @@ impl Node for IdentifierExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::IdentifierExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
-        let value = env.get(&self.token.literal);
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+        let borrowed_env = env.borrow();
+        // let value = env.borrow().get(&self.token.literal);
+        let value = borrowed_env.get(&self.token.literal);
         
         if value.is_none() {
             return Box::new(object::Error{message: format!("Variable {} not in scope.", self.token.literal).to_string()});
         }
         if value.unwrap().get_type() == ObjectType::Integer {
-            let int_value = value.unwrap().downcast_ref::<object::Integer>();
-            return Box::new(object::Integer{value: int_value.unwrap().value})
+            let int_value = value.unwrap().downcast_ref::<object::Integer>().unwrap();
+            return Box::new(object::Integer{value: int_value.value})
         } 
         if value.unwrap().get_type() == ObjectType::Boolean {
-            let bool_value = value.unwrap().downcast_ref::<object::Boolean>();
-            return Box::new(object::Boolean{value: bool_value.unwrap().value});
+            let bool_value = value.unwrap().downcast_ref::<object::Boolean>().unwrap();
+            return Box::new(object::Boolean{value: bool_value.value});
 
         }
-        return Box::new(object::Null{});
+        if value.unwrap().get_type() == ObjectType::Function {
+            let func_value = value.unwrap().downcast_ref::<object::Function>().unwrap();
+            return Box::new(
+                object::Function{env: func_value.env.clone(), 
+                                 body: func_value.body.clone(), 
+                                 parameters: func_value.parameters.clone()
+                }
+            );
+        }
+        return Box::new(object::Error{message: format!("Variable {} in scope but not returned.", self.token.literal).to_string()});
+
 
     }
 
@@ -284,7 +298,7 @@ impl Node for IntegralExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::IntegralExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         return Box::new(object::Integer{value: self.value});
     }
 
@@ -298,7 +312,7 @@ impl Node for BoolExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::BoolExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         return Box::new(object::Boolean{value: self.value});
     }
 
@@ -334,8 +348,8 @@ impl Node for PrefixExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::PrefixExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
-        let right = self.right.eval(env);
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+        let right = self.right.eval(env.clone());
         // println!("here");
         if right.get_type() == ObjectType::Error { return right; }
        
@@ -412,10 +426,10 @@ impl Node for InfixExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::InfixExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         
-        let r_operand = self.right.eval(env);
-        let l_operand = self.left.eval(env);
+        let r_operand = self.right.eval(env.clone());
+        let l_operand = self.left.eval(env.clone());
        
         if r_operand.get_type() == ObjectType::Integer && 
            l_operand.get_type() == ObjectType::Integer {
@@ -447,8 +461,8 @@ impl Node for IfElseExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::IfElseExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
-        let condition = self.condition.eval(env);
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
+        let condition = self.condition.eval(env.clone());
         if condition.get_type() != ObjectType::Boolean {
             if condition.get_type() == ObjectType::Error {
                 return condition;
@@ -459,10 +473,10 @@ impl Node for IfElseExpression {
         }
         let bool_condition = condition.downcast_ref::<object::Boolean>().unwrap();
         if bool_condition.value == true {
-             return self.consequence.eval(env);
+             return self.consequence.eval(env.clone());
 
         } else if self.alternative.is_some() {
-            return self.alternative.as_ref().unwrap().eval(env);
+            return self.alternative.as_ref().unwrap().eval(env.clone());
 
         } else {
             return Box::new(object::Null{});
@@ -492,9 +506,17 @@ impl Node for FunctionExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::FunctionExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         println!("made it");
-        return Box::new(object::Error{message: "Default".to_string()});
+        // let outer_env = std::rc::Rc::new(env);
+        
+        let to_return = object::Function {
+            body: self.body.clone(),
+            parameters: self.parameters.clone(),
+            env: Rc::new(RefCell::new(Enviroment::new(Some(env.clone())))),
+        };
+
+        return Box::new(to_return);
     }
 
     fn to_string(&self) -> String {
@@ -518,7 +540,7 @@ impl Node for CallExpression {
 
     fn get_type(&self) -> NodeType { return NodeType::CallExpression; }
 
-    fn eval(&self, env: &mut Enviroment) -> Box<Object> {
+    fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Box<Object> {
         return Box::new(object::Error{message: "Default".to_string()});
     }
 

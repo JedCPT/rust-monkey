@@ -1,8 +1,9 @@
 use super::enviroment::Enviroment;
-use super::ast::BlockStatement;
-use super::ast::IdentifierExpression;
+use super::ast::Statement;
+use super::ast::Expression;
 use downcast_rs::Downcast;
 use std::rc::Rc;
+use std::cell::RefCell;
 
 #[derive(PartialEq)]
 pub enum ObjectType {
@@ -84,9 +85,9 @@ impl Object for Error {
 }
 
 pub struct Function {
-    env: Rc<Enviroment>,
-    body: BlockStatement,
-    paramets: Vec<IdentifierExpression>
+    pub env: Rc<RefCell<Enviroment>>,
+    pub body: Rc<Box<Statement>>,
+    pub parameters: Rc<Vec<Box<Expression>>>
 }
 
 impl Object for Function {
@@ -95,6 +96,17 @@ impl Object for Function {
     }
 
     fn to_string(&self) -> String {
-        return "func".to_string();
+        let mut to_return = format!("Func (");
+        for par in self.parameters.iter().by_ref() {
+            to_return.push_str(&par.to_string());
+            to_return.push(',')
+        }
+        if self.parameters.len() != 0 {
+            to_return.pop(); // Remove trailing comma
+
+        }
+        to_return.push_str(&")\n".to_string());
+        to_return.push_str(&self.body.to_string());
+        return to_return;
     }
 }

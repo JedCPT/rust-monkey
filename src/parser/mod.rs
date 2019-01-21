@@ -28,6 +28,8 @@ use super::ast::InfixExpression;
 use super::ast::PrefixExpression;
 use super::ast::IntegralExpression;
 
+use std::rc::Rc;
+
 /*****************************************************************************/
 
 
@@ -384,8 +386,8 @@ impl Parser {
 
         let to_return = FunctionExpression {
             token: token,
-            body: body.unwrap(),
-            parameters: parameters
+            body: Rc::new(body.unwrap()),
+            parameters: Rc::new(parameters)
         };
         return Some(Box::new(to_return));
     }
