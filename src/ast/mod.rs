@@ -562,8 +562,17 @@ impl CallExpression {
 
     }
 
-    fn extend_enviroment(&self, args:Vec<Rc<Object>>) {
+    fn extend_enviroment(&self, func: Rc<Object>, args: Vec<Rc<Object>>, env: Rc<RefCell<Enviroment>>) -> Rc<RefCell<Enviroment>> {
+        let mut to_return = Enviroment::new(Some(env));
+        let f = func.downcast_ref::<object::Function>();
+        if f.is_none() {
+            println!("Error here!!");
+        }
+        // Cont from here!!!!!
+        // for (a,b) in args.iter().zip(f.as_ref().unwrap().parameters) {
 
+        // }
+        return Rc::new(RefCell::new(to_return));
 
     }
 }
@@ -573,22 +582,17 @@ impl Node for CallExpression {
     fn get_type(&self) -> NodeType { return NodeType::CallExpression; }
 
     fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object> {
+        
         let func = self.func.eval(env.clone());
         if func.get_type() != ObjectType::Function {
             return Rc::new(object::Error{message: "Invalid function.".to_string()});
         }
-        // if self.func.get_type() == NodeType::IdentifierExpression {
-        //     // let ident = self.func.downcast_ref::<object::Integer>().unwrap().value;
-        //     let func = self.func.eval(env);
-        //     // func = env.borrow().get(&self.func.token.literal);
-        //     // println!("sfsdf");
-        // }
-        println!("{}", self.func.to_string());
-        // let func = env.get()
+        
         let arguments = self.eval_arguments(env);
         if arguments.len() == 1 && arguments[0].get_type() == ObjectType::Error {
             return Rc::new(object::Error{message: "Couldn't evaluate function arguments.".to_string()});
         }
+
         return Rc::new(object::Error{message: "Default".to_string()});
     }
 

@@ -1,10 +1,14 @@
-/*****************************************************************************
- Jedda Boyle
- 
- CONTAINS:
- 
- NOTES:
- *****************************************************************************/
+
+/* 
+Author: Jedda Boyle
+Contains: Parser
+The parser does the syntatic analysis on the tokens produced by the lexer
+to ensure that they represent valid rust-monkey code. 
+*/
+
+// ================================================================================
+// Imports
+// ================================================================================
 
 use super::lexer::Lexer;
 
@@ -30,8 +34,9 @@ use super::ast::IntegralExpression;
 
 use std::rc::Rc;
 
-/*****************************************************************************/
-
+// ================================================================================
+// Define structures.
+// ================================================================================
 
 pub struct Program {
     pub statements: Vec<Box<Statement>>
@@ -41,8 +46,12 @@ pub struct Parser {
     pub lexer: Lexer,
     pub token: Token,
     pub next_token: Token,
-    errors: Vec<String>
+    errors: Vec<String> // Keep a vector of strings which record all the erros incounted in the parsing.
 }
+
+// ================================================================================
+// Implement structures.
+// ================================================================================
 
 impl Parser {
     
@@ -52,37 +61,42 @@ impl Parser {
         if token.is_none() || next_token.is_none() {
             println!("Error, parser given empty lexer.")
         }
-		Parser{
+		Parser {
               lexer: lexer, 
 			  token: token.unwrap(),
 			  next_token: next_token.unwrap(),
               errors: Vec::new()
         }
-        
 	}
 
+    // Parse tokens given by the lexer to return a program which is a vector of statements.
+    pub fn parse_program(&mut self, debug: bool) -> Option<Program> {
 
-    // Helper functions.
+        let mut program = Program{statements: Vec::new()};
+        let mut statement: Option<Box<Statement>>;
+        
+        while !self.token_is(TokenType::Eof) {
+            statement = self.parse_statement();
+            if !statement.is_none() {
+                if debug {
+                    println!("{}", statement.as_ref().unwrap().to_string());
+                }
+                program.statements.push(statement.unwrap());
+            } 
+            self.advance_tokens();
+        }
+        self.print_parse_errors();
+        return Some(program);
+        
+
+    }
+
+    // ================================================================================
+    // Get functions.
+    // ================================================================================
 
     fn token_type(&self) -> TokenType {
-        
         return self.token.token_type.clone();
-    }
-
-    pub fn advance_tokens(&mut self) {
-        self.token = self.next_token.clone();
-        self.next_token = self.lexer.next_token().unwrap();
-    }
-
-    fn advance_tokens_if_next_token_is(&mut self, expected_type: TokenType) -> bool {
-        
-        if self.next_token_is(expected_type) {
-            self.advance_tokens();
-            return true;
-        } else {
-            self.next_token_error(expected_type);
-            return false;
-        }
     }
 
     fn token_is(&mut self, token_type: TokenType) -> bool {
@@ -93,26 +107,50 @@ impl Parser {
         return self.next_token.token_type == token_type;
     }
 
-    fn next_token_precedence(&mut self) -> Precedence {
-        return self.next_token.get_precedence();
-    } 
-
     fn token_precedence(&mut self) -> Precedence {
         return self.token.get_precedence();
     } 
 
-    fn next_token_error(&mut self, expected_token_type: TokenType) {
+    fn next_token_precedence(&mut self) -> Precedence {
+        return self.next_token.get_precedence();
+    } 
+
+    // ================================================================================
+    // Read functions.
+    // ================================================================================
+
+    pub fn advance_tokens(&mut self) {
+        self.token = self.next_token.clone();
+        self.next_token = self.lexer.next_token().unwrap();
+    }
+
+    // advance tokens if next is the expected token type. Otherwise create a next token error and add 
+    // it to the vector of parsing errors.
+    fn advance_tokens_if_next_token_is(&mut self, expected_type: TokenType) -> bool {
+        if self.next_token_is(expected_type) {
+            self.advance_tokens();
+            return true;
+        } else {
+            self.log_next_token_error(expected_type);
+            return false;
+        }
+    }
+
+    // ================================================================================
+    // Error handling functions.
+    // ================================================================================
+
+    fn log_parse_error(&mut self, error_message: String) {
+        self.errors.push(error_message);
+    }
+
+    fn log_next_token_error(&mut self, expected_token_type: TokenType) {
         let expected_token = Token {
             token_type: expected_token_type,
             literal: "".to_string()
         };
         self.errors.push(format!("Expected next token to be {} but got {} instead", 
         expected_token, self.token.clone()));
-
-    }
-
-    fn add_parse_error(&mut self, error_message: String) {
-        self.errors.push(error_message);
     }
 
     pub fn print_parse_errors(&mut self) {
@@ -120,41 +158,49 @@ impl Parser {
             return;
         }
         println!("Woops! We ran into some monkey business here!");
-        println!("Parse Errors");
         for err in self.errors.iter().as_ref() {
             println!("\t{}", err);
         }
     }
 
-    // Parse statements.
+    // ================================================================================
+    // Parse statement functions.
+    // ================================================================================
+
+    fn parse_statement(&mut self) -> Option<Box<Statement>> {
+        match self.token_type() {
+            TokenType::Let => self.parse_let_statement(),
+            TokenType::Return => self.parse_return_statement(),
+            _ => self.parse_expression_statement()
+        }
+    }
 
     fn parse_return_statement(&mut self) -> Option<Box<Statement>> {
-        let token = self.token.clone();
+        // let token = self.token.clone(); // Make token a return token
+        // let token = Token::new("return".to_string());//clone(); // Make token a return token
         self.advance_tokens();
 
         let value = self.parse_expression(Precedence::Lowest);
         
         if value.is_none() {
-            self.add_parse_error("Return statement missing a value expression.".to_string());
+            self.log_parse_error("Return statement missing a value expression.".to_string());
             return None;
         }
         
+        // TODO remove semicolon functinality.
         if self.next_token_is(TokenType::SemiColon) {
             self.advance_tokens();
-
         }
          
-        let to_return = ReturnStatement{token: token, value: value.unwrap()};
+        let to_return = ReturnStatement{token: Token::new("return".to_string()), value: value.unwrap()};
 
         return Some(Box::new(to_return));
         
     }
 
     fn parse_let_statement(&mut self) -> Option<Box<Statement>> {
-        // let to_return: LetStatement;
         
-        
-        let token = self.token.clone();
+        // let token = self.token.clone();
 
         if !self.advance_tokens_if_next_token_is(TokenType::Ident) {
             return None;
@@ -172,19 +218,19 @@ impl Parser {
         let value = self.parse_expression(Precedence::Lowest);
         if value.is_some() {
             
+            // TODO remove semicolon functinality.
             if self.next_token_is(TokenType::SemiColon) {
                 self.advance_tokens();
             }
             
-            
             let to_return = LetStatement {
-                token: token,
+                token: Token::new("let".to_string()),
                 value: value.unwrap(),
                 identifier: identifier
             };
             return Some(Box::new(to_return));
         } else {
-            self.add_parse_error("Let statement is missing a value expression".to_string());
+            self.log_parse_error("Let statement is missing a value expression".to_string());
             return None;
         }
     }
@@ -211,7 +257,7 @@ impl Parser {
         let token = self.token.clone();
         let value = self.parse_expression(Precedence::Lowest);
         if value.is_none() {
-            self.add_parse_error("Expression statement is missing a value expression.".to_string());
+            self.log_parse_error("Expression statement is missing a value expression.".to_string());
             return None;
         }
         
@@ -227,14 +273,7 @@ impl Parser {
 
     }
 
-    fn parse_statement(&mut self) -> Option<Box<Statement>> {
-        match self.token_type() {
-            TokenType::Let => self.parse_let_statement(),
-            TokenType::Return => self.parse_return_statement(),
-            _ => self.parse_expression_statement()
-        }
-        
-    }
+    
 
 
     // Parse expressions.
@@ -247,7 +286,7 @@ impl Parser {
         let token = self.token.clone();
         let value_result = token.literal.parse::<i64>();
         if value_result.is_err() {
-            self.add_parse_error("Integral value not of type int.".to_string());
+            self.log_parse_error("Integral value not of type int.".to_string());
             return None;
         }
         let to_return = IntegralExpression {
@@ -270,7 +309,7 @@ impl Parser {
         self.advance_tokens();
         let right = self.parse_expression(Precedence::Prefix);
         if right.is_none() {
-            self.add_parse_error("Prefix expression missing right operand".to_string());
+            self.log_parse_error("Prefix expression missing right operand".to_string());
             return None;
         }
         let to_return = PrefixExpression {
@@ -286,7 +325,7 @@ impl Parser {
         self.advance_tokens();
         let right = self.parse_expression(precedence);
         if right.is_none() {
-            self.add_parse_error("Prefix expression missing right operand".to_string());
+            self.log_parse_error("Prefix expression missing right operand".to_string());
             return None;
         }
         let to_return = InfixExpression {
@@ -317,7 +356,7 @@ impl Parser {
         
         let condition = self.parse_expression(Precedence::Lowest);
         if condition.is_none() {
-            self.add_parse_error("If expression invalid condition.".to_string());
+            self.log_parse_error("If expression invalid condition.".to_string());
             return None;
         }
         
@@ -330,7 +369,7 @@ impl Parser {
         
         let consequence = self.parse_block_statement();
         if consequence.is_none() {
-            self.add_parse_error("If expression missing a consequence.".to_string());
+            self.log_parse_error("If expression missing a consequence.".to_string());
             return None;
         }
         
@@ -380,7 +419,7 @@ impl Parser {
         }
         let body = self.parse_block_statement();
         if body.is_none() {
-            self.add_parse_error("Function missing a block statement".to_string());
+            self.log_parse_error("Function missing a block statement".to_string());
             return None;
         }
 
@@ -406,7 +445,7 @@ impl Parser {
 
         let mut expression = self.parse_expression(Precedence::Lowest);
         if expression.is_none() {
-            self.add_parse_error("Error in call argument".to_string());
+            self.log_parse_error("Error in call argument".to_string());
             return None;
         }
         to_return.arguments.push(expression.unwrap());
@@ -419,7 +458,7 @@ impl Parser {
             // to_return.arguments.push(self.parse_expression(Precedence::Lowest).unwrap());
             expression = self.parse_expression(Precedence::Lowest);
             if expression.is_none() {
-                self.add_parse_error("Error in call argument".to_string());
+                self.log_parse_error("Error in call argument".to_string());
                 return None;
             }
             to_return.arguments.push(expression.unwrap());
@@ -477,26 +516,7 @@ impl Parser {
 
     }
 
-    pub fn parse_program(&mut self) -> Option<Program> {
-
-        let mut program = Program{statements: Vec::new()};
-        let mut statement: Option<Box<Statement>>;
-        
-        while !self.token_is(TokenType::Eof) {
-            statement = self.parse_statement();
-            if !statement.is_none() {
-                // println!("{}", statement.as_ref().unwrap().to_string());
-                program.statements.push(statement.unwrap());
-            } 
-
-            self.advance_tokens();
-            
-
-        }
-        return Some(program);
-        
-
-    }
+   
 
     
     
