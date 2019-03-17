@@ -1,6 +1,5 @@
 use super::enviroment::Enviroment;
-use super::ast::Statement;
-use super::ast::Expression;
+use super::ast::Node;
 use downcast_rs::Downcast;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -86,8 +85,8 @@ impl Object for Error {
 
 pub struct Function {
     pub env: Rc<RefCell<Enviroment>>,
-    pub body: Rc<Box<Statement>>,
-    pub parameters: Rc<Vec<Box<Expression>>>
+    pub body: Rc<Box<Node>>,
+    pub parameters: Rc<Vec<Box<Node>>>
 }
 
 impl Object for Function {

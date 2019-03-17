@@ -18,11 +18,10 @@ use super::lexer::token::Token;
 use super::lexer::token::TokenType;
 
 use super::ast::BlockStatement;
-use super::ast::Expression;
+use super::ast::Node;
 use super::ast::ExpressionStatement;
 use super::ast::LetStatement;
 use super::ast::ReturnStatement;
-use super::ast::Statement;
 
 use super::ast::BoolExpression;
 use super::ast::CallExpression;
@@ -40,7 +39,7 @@ use std::rc::Rc;
 // ================================================================================
 
 pub struct Program {
-    pub statements: Vec<Box<Statement>>,
+    pub statements: Vec<Box<Node>>,
 }
 
 pub struct Parser {
@@ -74,7 +73,7 @@ impl Parser {
         let mut program = Program {
             statements: Vec::new(),
         };
-        let mut statement: Option<Box<Statement>>;
+        let mut statement: Option<Box<Node>>;
 
         while !self.token_is(TokenType::Eof) {
             statement = self.parse_statement();
@@ -165,7 +164,7 @@ impl Parser {
     // Functions for parsing statements.
     // ================================================================================
 
-    fn parse_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_statement(&mut self) -> Option<Box<Node>> {
         match self.token_type() {
             TokenType::Let => self.parse_let_statement(),
             TokenType::Return => self.parse_return_statement(),
@@ -173,7 +172,7 @@ impl Parser {
         }
     }
 
-    fn parse_let_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_let_statement(&mut self) -> Option<Box<Node>> {
         // Parse identifier.
         if !self.advance_tokens_if_next_token_is(TokenType::Ident) {
             self.log_parse_error("Let statement is missing an identifier.".to_string());
@@ -211,7 +210,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_return_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_return_statement(&mut self) -> Option<Box<Node>> {
         // Parse return expression.
         self.advance_tokens();
         let value = self.parse_expression(Precedence::Lowest);
@@ -233,7 +232,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_expression_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_expression_statement(&mut self) -> Option<Box<Node>> {
         // Parse expression.
         let value = self.parse_expression(Precedence::Lowest);
         if value.is_none() {
@@ -254,7 +253,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_block_statement(&mut self) -> Option<Box<Statement>> {
+    fn parse_block_statement(&mut self) -> Option<Box<Node>> {
         let mut to_return = BlockStatement {
             token: Token::new("(".to_string()),
             statements: Vec::new(),
@@ -278,7 +277,7 @@ impl Parser {
     // Functions for parsing expressions.
     // ================================================================================
 
-    fn parse_expression(&mut self, precedence: Precedence) -> Option<Box<Expression>> {
+    fn parse_expression(&mut self, precedence: Precedence) -> Option<Box<Node>> {
         let mut left_expression = match self.token_type() {
             TokenType::Ident => self.parse_identifier_expression(),
             TokenType::Int => self.parse_integral_expression(),
@@ -316,14 +315,14 @@ impl Parser {
         return left_expression;
     }
 
-    fn parse_identifier_expression(&mut self) -> Option<Box<Expression>> {
+    fn parse_identifier_expression(&mut self) -> Option<Box<Node>> {
         let to_return = IdentifierExpression {
             token: self.token.clone(),
         };
         return Some(Box::new(to_return));
     }
 
-    fn parse_bool_expression(&mut self) -> Option<Box<Expression>> {
+    fn parse_bool_expression(&mut self) -> Option<Box<Node>> {
         let to_return = BoolExpression {
             token: self.token.clone(),
             value: self.token_is(TokenType::True),
@@ -331,7 +330,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_integral_expression(&mut self) -> Option<Box<Expression>> {
+    fn parse_integral_expression(&mut self) -> Option<Box<Node>> {
         // Covert literal into integral.
         let value_result = self.token.literal.parse::<i64>();
         if value_result.is_err() {
@@ -346,7 +345,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_prefix_expression(&mut self) -> Option<Box<Expression>> {
+    fn parse_prefix_expression(&mut self) -> Option<Box<Node>> {
         // Record prefix operator.
         let token = self.token.clone();
 
@@ -365,7 +364,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_infix_expression(&mut self, left: Box<Expression>) -> Option<Box<Expression>> {
+    fn parse_infix_expression(&mut self, left: Box<Node>) -> Option<Box<Node>> {
         // Record infix operator and its precedence.
         let token = self.token.clone();
         let precedence = self.token_precedence();
@@ -386,7 +385,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_grouped_expression(&mut self) -> Option<Box<Expression>> {
+    fn parse_grouped_expression(&mut self) -> Option<Box<Node>> {
         // Mover over opening bracket.
         self.advance_tokens();
 
@@ -398,7 +397,7 @@ impl Parser {
         return to_return;
     }
 
-    fn parse_ifelse_expression(&mut self) -> Option<Box<Expression>> {
+    fn parse_ifelse_expression(&mut self) -> Option<Box<Node>> {
         // Move forward until the condition.
         if !self.advance_tokens_if_next_token_is(TokenType::LParen) {
             self.log_next_token_error(TokenType::LParen);
@@ -431,7 +430,7 @@ impl Parser {
         }
 
         // Parse 'else' block statement.
-        let mut alternative: Option<Box<Statement>> = None;
+        let mut alternative: Option<Box<Node>> = None;
         if self.next_token_is(TokenType::Else) {
             self.advance_tokens();
             if !self.advance_tokens_if_next_token_is(TokenType::LBrace) {
@@ -450,7 +449,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_func_expression(&mut self) -> Option<Box<Expression>> {
+    fn parse_func_expression(&mut self) -> Option<Box<Node>> {
         // Move over opening brace.
         if !self.advance_tokens_if_next_token_is(TokenType::LParen) {
             self.log_next_token_error(TokenType::LParen);
@@ -459,7 +458,7 @@ impl Parser {
         self.advance_tokens();
 
         // Parse parameters.
-        let mut parameters: Vec<Box<Expression>> = Vec::new();
+        let mut parameters: Vec<Box<Node>> = Vec::new();
         while !self.token_is(TokenType::RParen) {
             parameters.push(self.parse_identifier_expression().unwrap());
             if self.next_token_is(TokenType::RParen) {
@@ -491,7 +490,7 @@ impl Parser {
         return Some(Box::new(to_return));
     }
 
-    fn parse_call_expression(&mut self, func: Box<Expression>) -> Option<Box<Expression>> {
+    fn parse_call_expression(&mut self, func: Box<Node>) -> Option<Box<Node>> {
         // Parse function name.
         let mut to_return = CallExpression {
             token: self.token.clone(),

@@ -49,14 +49,6 @@ pub trait Node {
     fn eval(&self, env: Rc<RefCell<Enviroment>>) -> Rc<Object>;
 }
 
-pub trait Statement: Node {
-    fn statement_node(&self);
-}
-
-pub trait Expression: Node {
-    fn expression_node(&self);
-}
-
 // ================================================================================
 // Nodes.
 // ================================================================================
@@ -65,23 +57,23 @@ pub trait Expression: Node {
 
 pub struct LetStatement {
     pub token: Token,
-    pub value: Box<Expression>,
+    pub value: Box<Node>,
     pub identifier: IdentifierExpression,
 }
 
 pub struct ReturnStatement {
     pub token: Token,
-    pub value: Box<Expression>,
+    pub value: Box<Node>,
 }
 
 pub struct ExpressionStatement {
     pub token: Token,
-    pub value: Box<Expression>,
+    pub value: Box<Node>,
 }
 
 pub struct BlockStatement {
     pub token: Token,
-    pub statements: Vec<Box<Statement>>,
+    pub statements: Vec<Box<Node>>,
 }
 
 // Expression nodes.
@@ -102,51 +94,55 @@ pub struct BoolExpression {
 
 pub struct PrefixExpression {
     pub token: Token,
-    pub right: Box<Expression>,
+    pub right: Box<Node>,
 }
 
 pub struct InfixExpression {
     pub token: Token,
-    pub left: Box<Expression>,
-    pub right: Box<Expression>,
+    pub left: Box<Node>,
+    pub right: Box<Node>,
 }
 
 pub struct IfElseExpression {
     pub token: Token,
-    pub condition: Box<Expression>,
-    pub consequence: Box<Statement>,
-    pub alternative: Option<Box<Statement>>,
+    pub condition: Box<Node>,
+    pub consequence: Box<Node>,
+    pub alternative: Option<Box<Node>>,
 }
 
 pub struct FunctionExpression {
     pub token: Token,
-    pub parameters: Rc<Vec<Box<Expression>>>,
-    pub body: Rc<Box<Statement>>,
+    pub parameters: Rc<Vec<Box<Node>>>,
+    pub body: Rc<Box<Node>>,
 }
 
 pub struct CallExpression {
     pub token: Token,
-    pub arguments: Vec<Box<Expression>>,
-    pub func: Box<Expression>,
+    pub arguments: Vec<Box<Node>>,
+    pub func: Box<Node>,
 }
 
 // Make sure all statements adhere to the statement trait.
 
-impl Statement for LetStatement {
-    fn statement_node(&self) {}
-}
+// impl Statement for LetStatement {
+//     fn statement_node(&self) {}
+// }
 
-impl Statement for ReturnStatement {
-    fn statement_node(&self) {}
-}
+// impl Statement for ReturnStatement {
+//     fn statement_node(&self) {}
+// }
 
-impl Statement for ExpressionStatement {
-    fn statement_node(&self) {}
-}
+// impl Statement for ExpressionStatement {
+//     fn statement_node(&self) {}
+// }
 
-impl Statement for BlockStatement {
-    fn statement_node(&self) {}
-}
+// impl Statement for BlockStatement {
+//     fn statement_node(&self) {}
+// }
+
+// ================================================================================
+// Node implemetations.
+// ================================================================================
 
 // Implement Node for each statement.
 
@@ -234,40 +230,39 @@ impl Node for BlockStatement {
 // ================================================================================
 
 
-
 // Ensure that all expressions adhere to the Node trait.
 
-impl Expression for IdentifierExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for IdentifierExpression {
+//     fn expression_node(&self) {}
+// }
 
-impl Expression for IntegralExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for IntegralExpression {
+//     fn expression_node(&self) {}
+// }
 
-impl Expression for BoolExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for BoolExpression {
+//     fn expression_node(&self) {}
+// }
 
-impl Expression for PrefixExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for PrefixExpression {
+//     fn expression_node(&self) {}
+// }
 
-impl Expression for InfixExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for InfixExpression {
+//     fn expression_node(&self) {}
+// }
 
-impl Expression for IfElseExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for IfElseExpression {
+//     fn expression_node(&self) {}
+// }
 
-impl Expression for FunctionExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for FunctionExpression {
+//     fn expression_node(&self) {}
+// }
 
-impl Expression for CallExpression {
-    fn expression_node(&self) {}
-}
+// impl Expression for CallExpression {
+//     fn expression_node(&self) {}
+// }
 
 // Implement Node for each expression.
 
@@ -586,8 +581,8 @@ impl Node for FunctionExpression {
 
 // pub struct CallExpression {
 //     pub token: Token,
-//     pub arguments: Vec<Box<Expression>>,
-//     pub func: Box<Expression>
+//     pub arguments: Vec<Box<Node>>,
+//     pub func: Box<Node>
 // }
 
 impl CallExpression {
