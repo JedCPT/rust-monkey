@@ -514,7 +514,7 @@ impl Parser {
         }
         to_return.arguments.push(expression.unwrap());
 
-        // Continue if there are more than arguments to parse.
+        // Continue if there are more arguments to parse.
         while self.next_token_is(TokenType::Comma) {
             self.advance_tokens();
             self.advance_tokens();

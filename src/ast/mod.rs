@@ -21,6 +21,8 @@ use std::rc::Rc;
 
 
 // ================================================================================
+// Traits for the type of nodes that make up the AST.
+// ================================================================================
 
 #[derive(PartialEq)]
 pub enum NodeType {
@@ -38,10 +40,6 @@ pub enum NodeType {
     FunctionExpression,
     CallExpression,
 }
-
-// ================================================================================
-// Traits for the type of nodes that make up the AST.
-// ================================================================================
 
 pub trait Node {
     fn get_type(&self) -> NodeType;
@@ -86,7 +84,7 @@ pub struct BlockStatement {
     pub statements: Vec<Box<Statement>>,
 }
 
-// Expressin 
+// Expression nodes.
 
 pub struct IdentifierExpression {
     pub token: Token,
