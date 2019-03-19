@@ -4,9 +4,16 @@ Contains: Lexer
 The lexer splits strings of code into tokens.
 */
 
+// ================================================================================
+// Imports
+// ================================================================================
+
 pub mod token;
 use token::Token;
-use token::TokenType;
+
+// ================================================================================
+// Lexer struct
+// ================================================================================
 
 pub struct Lexer {
     input: String,
@@ -15,6 +22,10 @@ pub struct Lexer {
     val: char,            // current char under examination
     eof: bool,
 }
+
+// ================================================================================
+// Lexer implementation.
+// ================================================================================
 
 impl Lexer {
     pub fn new(input_string: &String) -> Self {
@@ -101,19 +112,3 @@ impl Lexer {
         }
     }
 }
-
-// TODO remove this...
-// impl Iterator for Lexer {
-//     type Item = Token;
-
-//     fn next(&mut self) -> Option<Token> {
-//         let to_return = self.next_token();
-//         if to_return.is_none() {
-//             return None;
-//         }
-//         if to_return.as_ref().unwrap().token_type == TokenType::Eof {
-//             return None;
-//         }
-//         return to_return;
-//     }
-// }

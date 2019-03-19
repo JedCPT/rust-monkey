@@ -3,7 +3,7 @@ Author: Jedda Boyle
 Contains: Parser
 The parser does the syntatic analysis on the tokens produced by the lexer
 to ensure that they represent valid rust-monkey code.
-The parser returns an abstract syntax tree represenation of the code which 
+The parser returns an abstract syntax tree represenation of the code which
 can be evaluated.
 */
 
@@ -11,16 +11,15 @@ can be evaluated.
 // Imports
 // ================================================================================
 
-use super::lexer::Lexer;
-
 use super::lexer::token::Precedence;
 use super::lexer::token::Token;
 use super::lexer::token::TokenType;
+use super::lexer::Lexer;
 
 use super::ast::BlockStatement;
-use super::ast::Node;
 use super::ast::ExpressionStatement;
 use super::ast::LetStatement;
+use super::ast::Node;
 use super::ast::ReturnStatement;
 
 use super::ast::BoolExpression;
@@ -495,7 +494,7 @@ impl Parser {
         let mut to_return = CallExpression {
             token: self.token.clone(),
             arguments: Vec::new(),
-            func: func,
+            func_identifier: func, // Func is ast::IdentifierExpression
         };
         // Move over opening paren for args.
         self.advance_tokens();

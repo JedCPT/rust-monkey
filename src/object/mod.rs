@@ -1,8 +1,24 @@
-use super::enviroment::Enviroment;
+/*
+Author: Jedda Boyle
+Contains: The object model.
+The objects are the types of the language.
+They are passed up through the AST during evaluation.
+The object classes contain all the data.
+*/
+
+// ================================================================================
+// Imports
+// ================================================================================
+
 use super::ast::Node;
-use downcast_rs::Downcast;
-use std::rc::Rc;
+use super::enviroment::Enviroment;
+use downcast_rs::Downcast; // Crate used to downcast objects to their actual type.
 use std::cell::RefCell;
+use std::rc::Rc;
+
+// ================================================================================
+// Object Trait
+// ================================================================================
 
 #[derive(PartialEq)]
 pub enum ObjectType {
@@ -14,17 +30,39 @@ pub enum ObjectType {
 }
 
 pub trait Object: Downcast {
-    // pub value: i64
     fn get_type(&self) -> ObjectType;
     fn to_string(&self) -> String;
 }
 
 impl_downcast!(Object);
 
+// ================================================================================
+// Object structs.
+// ================================================================================
+
 pub struct Integer {
-    pub value: i64
+    pub value: i64,
 }
 
+pub struct Boolean {
+    pub value: bool,
+}
+
+pub struct Null {}
+
+pub struct Error {
+    pub message: String,
+}
+
+pub struct Function {
+    pub env: Rc<RefCell<Enviroment>>,
+    pub body: Rc<Box<Node>>,
+    pub parameters: Rc<Vec<Box<Node>>>,
+}
+
+// ================================================================================
+// Implement Object for each type.
+// ================================================================================
 
 impl Object for Integer {
     fn get_type(&self) -> ObjectType {
@@ -36,15 +74,9 @@ impl Object for Integer {
     }
 }
 
-pub struct Boolean {
-    pub value: bool
-}
-
-
 impl Object for Boolean {
     fn get_type(&self) -> ObjectType {
         return ObjectType::Boolean;
-
     }
 
     fn to_string(&self) -> String {
@@ -52,15 +84,9 @@ impl Object for Boolean {
     }
 }
 
-pub struct Null {
-    // pub value: bool
-}
-
-
 impl Object for Null {
     fn get_type(&self) -> ObjectType {
         return ObjectType::Null;
-
     }
 
     fn to_string(&self) -> String {
@@ -68,25 +94,14 @@ impl Object for Null {
     }
 }
 
-pub struct Error {
-    pub message: String
-}
-
 impl Object for Error {
     fn get_type(&self) -> ObjectType {
         return ObjectType::Error;
-
     }
 
     fn to_string(&self) -> String {
         return format!("{}", self.message);
     }
-}
-
-pub struct Function {
-    pub env: Rc<RefCell<Enviroment>>,
-    pub body: Rc<Box<Node>>,
-    pub parameters: Rc<Vec<Box<Node>>>
 }
 
 impl Object for Function {
@@ -102,7 +117,6 @@ impl Object for Function {
         }
         if self.parameters.len() != 0 {
             to_return.pop(); // Remove trailing comma
-
         }
         to_return.push_str(&")\n".to_string());
         to_return.push_str(&self.body.to_string());
